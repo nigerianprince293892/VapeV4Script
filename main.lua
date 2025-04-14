@@ -1,0 +1,1 @@
+print("Welcome tomaiden26, your script is running!")
