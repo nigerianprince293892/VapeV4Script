@@ -1,107 +1,126 @@
--- Wait for the game to load completely
 repeat task.wait() until game:IsLoaded()
 
--- Handle previous session cleanup (if any previous session exists)
-if shared.customFramework then
-    shared.customFramework:Uninject()  -- Clean up from the previous session if necessary
-end
+if shared.vape then shared.vape:Uninject() end
 
--- Handle specific executor-related adjustments (optional)
-if identifyexecutor and ({identifyexecutor()})[1] == "Argon" then
-    getgenv().setthreadidentity = nil
-end
-
--- Global variables setup (prevents any thread-related issues)
-getgenv().setthreadidentity = function() end
-getgenv().run = function(func)
-    local success, err = pcall(func)
-    if not success then
-        warn("[Custom Framework]: Error - " .. debug.traceback(tostring(err)))
+-- Ensure thread identity is cleared for specific executors
+if identifyexecutor then
+    if table.find({'Argon', 'Wave'}, ({identifyexecutor()})[1]) then
+        getgenv().setthreadidentity = nil
     end
 end
 
--- UI profile and save handling (manages GUI profiles for customizations)
-local guiProfile = "default"  -- Default profile name
-if not isfile("profiles/gui.txt") then
-    writefile("profiles/gui.txt", guiProfile)
-end
-guiProfile = readfile("profiles/gui.txt")
-if not isfolder("assets/" .. guiProfile) then
-    makefolder("assets/" .. guiProfile)
-end
-
--- Load the necessary libraries
-local Functions = loadstring(game:HttpGet("https://yourdomain.com/libraries/YourFunctions.lua", true))()
-Functions.GlobaliseObject("CustomFunctions", Functions)
-
--- Load the GUI layout for the chosen profile
-local gui = pload("guis/" .. guiProfile .. ".lua", true, true)
-shared.customFramework = gui
-getgenv().customFramework = gui
-getgenv().GuiLibrary = gui
-
--- Notification system for giving feedback to the user
-getgenv().InfoNotification = function(title, msg, dur)
-    gui:CreateNotification(title, msg, dur)
-end
-
--- Handle the loading of game-specific scripts
-local function loadPlaceScripts()
-    local placeId = game.PlaceId
-    local fileName = tostring(placeId) .. ".lua"  -- Use PlaceId to determine specific scripts
-    if isfile("games/" .. fileName) then
-        pload("games/" .. fileName, true, true)
+local vape
+local loadstring = function(...)
+    local res, err = loadstring(...)
+    if err and vape then
+        vape:CreateNotification('Vape', 'Failed to load : '..err, 30, 'alert')
     end
+    return res
 end
 
--- Finish setup and handle post-load actions (saving preferences, etc.)
+local queue_on_teleport = queue_on_teleport or function() end
+
+local isfile = isfile or function(file)
+    local suc, res = pcall(function()
+        return readfile(file)
+    end)
+    return suc and res ~= nil and res ~= ''
+end
+
+local cloneref = cloneref or function(obj)
+    return obj
+end
+
+local playersService = cloneref(game:GetService('Players'))
+
+local function downloadFile(path, func)
+    if not isfile(path) then
+        local suc, res = pcall(function()
+            return game:HttpGet('https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/'..select(1, path:gsub('newvape/', '')), true)
+        end)
+        if not suc or res == '404: Not Found' then
+            error(res)
+        end
+        if path:find('.lua') then
+            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n'..res
+        end
+        writefile(path, res)
+    end
+    return (func or readfile)(path)
+end
+
 local function finishLoading()
-    gui:Load()  -- Load the GUI
+    vape.Init = nil
+    vape:Load()
     task.spawn(function()
         repeat
-            gui:Save()  -- Save settings periodically
+            vape:Save()
             task.wait(10)
-        until not gui.Loaded
+        until not vape.Loaded
     end)
-end
 
--- Handle game-specific logic and execute scripts
-loadPlaceScripts()
+    local teleportedServers
+    vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
+        if (not teleportedServers) and (not shared.VapeIndependent) then
+            teleportedServers = true
+            local teleportScript = [[
+                shared.vapereload = true
+                if shared.VapeDeveloper then
+                    loadstring(readfile('newvape/loader.lua'), 'loader')()
+                else
+                    loadstring(game:HttpGet('https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/loader.lua', true), 'loader')()
+                end
+            ]]
+            if shared.VapeDeveloper then
+                teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
+            end
+            if shared.VapeCustomProfile then
+                teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
+            end
+            vape:Save()
+            queue_on_teleport(teleportScript)
+        end
+    end))
 
--- Call finish loading once scripts are ready
-finishLoading()
-
--- Handle game-specific customization (optional based on PlaceId)
-local bedwarsID = {
-    game = {6872274481, 8444591321, 8560631822},  -- List of BedWars PlaceIds
-    lobby = {6872265039}  -- Lobby PlaceIds
-}
-
--- Check if the game matches any of the BedWars PlaceIds
-local function handleGameSpecific()
-    local placeId = game.PlaceId
-    local CE = shared.CheatEngineMode and "CE" or ""  -- Check for Cheat Engine Mode
-    local fileName1, fileName2 = placeId .. ".lua", "VW" .. placeId .. ".lua"
-
-    local isGame = table.find(bedwarsID.game, placeId)
-    local isLobby = table.find(bedwarsID.lobby, placeId)
-
-    if isGame then
-        -- Game-specific setup for BedWars
-        fileName1 = CE .. "6872274481.lua"
-        fileName2 = "VW6872274481.lua"
-    elseif isLobby then
-        -- Lobby-specific setup
-        fileName1 = CE .. "6872265039.lua"
-        fileName2 = "VW6872265039.lua"
+    if not shared.vapereload then
+        if not vape.Categories then return end
+        if vape.Categories.Main.Options['GUI bind indicator'].Enabled then
+            vape:CreateNotification('Finished Loading', vape.VapeButton and 'Press the button in the top right to open GUI' or 'Press '..table.concat(vape.Keybind, ' + '):upper()..' to open GUI', 5)
+        end
     end
-
-    warn("[Custom Framework] - File Names: ", fileName1, fileName2)
-    pload('games/' .. tostring(fileName1))  -- Load the game-specific script
-    pload('games/' .. tostring(fileName2))  -- Load the alternate version (if applicable)
 end
 
-handleGameSpecific()
+-- Check and create necessary files
+if not isfile('newvape/profiles/gui.txt') then
+    writefile('newvape/profiles/gui.txt', 'new')
+end
+local gui = readfile('newvape/profiles/gui.txt')
 
--- Notification about script load status
-warn("[Custom Framework] - Finished Loading!")
+if not isfolder('newvape/assets/'..gui) then
+    makefolder('newvape/assets/'..gui)
+end
+
+-- Load GUI from your GitHub repo
+vape = loadstring(downloadFile('newvape/guis/'..gui..'.lua'), 'gui')()
+shared.vape = vape
+
+if not shared.VapeIndependent then
+    loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
+    loadstring(downloadFile('newvape/games/modules.lua'), 'modules')()
+    if isfile('newvape/games/'..game.PlaceId..'.lua') then
+        loadstring(readfile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
+    else
+        if not shared.VapeDeveloper then
+            local suc, res = pcall(function()
+                return game:HttpGet('https://raw.githubusercontent.com/VapeV4Script/VapeV4Script/main/games/'..game.PlaceId..'.lua', true)
+            end)
+            if suc and res ~= '404: Not Found' then
+                loadstring(downloadFile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
+            end
+        end
+    end
+    finishLoading()
+else
+    vape.Init = finishLoading
+    return vape
+end
