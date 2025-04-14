@@ -1,3 +1,4 @@
 return {
-    ["tomaiden26"] = true
+    ["tomaiden26"] = true,
+    [rezngl] = true,
 }
