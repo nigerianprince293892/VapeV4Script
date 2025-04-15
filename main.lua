@@ -112,7 +112,7 @@ if not shared.VapeIndependent then
     else
         if not shared.VapeDeveloper then
             local suc, res = pcall(function()
-                return game:HttpGet('https://raw.githubusercontent.com/VapeV4Script/VapeV4Script/main/games/'..game.PlaceId..'.lua', true)
+                return game:HttpGet('https://raw.githubusercontent.com/nigerianprince293892/VapeV4Script/main/games/'..game.PlaceId..'.lua', true)
             end)
             if suc and res ~= '404: Not Found' then
                 loadstring(downloadFile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
