@@ -1,7 +1,7 @@
 -- Whitelist check
 local whitelist = loadstring(game:HttpGet("https://raw.githubusercontent.com/nigerianprince293892/VapeV4Script/main/whitelist.lua", true))()
 if not whitelist[game.Players.LocalPlayer.Name] then
-    game.Players.LocalPlayer:Kick("Not whitelisted.")
+    game.Players.LocalPlayer:("Not whitelisted.")
 end
 
 -- Your Vape loader logic begins here
